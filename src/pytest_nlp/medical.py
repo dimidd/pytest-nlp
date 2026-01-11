@@ -100,6 +100,7 @@ def get_medspacy_pipeline(
             TargetRule("pneumonia", "PROBLEM"),
             TargetRule("fever", "PROBLEM"),
             TargetRule("headache", "PROBLEM"),
+            TargetRule("headaches", "PROBLEM"),
             TargetRule("chest pain", "PROBLEM"),
             TargetRule("shortness of breath", "PROBLEM"),
             TargetRule("cough", "PROBLEM"),
