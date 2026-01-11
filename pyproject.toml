@@ -26,7 +26,7 @@ classifiers = [
 dependencies = [
     "pytest>=7.0",
     "sentence-transformers>=2.2",
-    "spacy>=3.5",
+    "spacy>=3.8",
     "stanza>=1.5",
     "torch",
 ]
@@ -37,6 +37,8 @@ dev = [
     "ruff",
     "en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
 ]
+# Note: For medical NER features, install medspacy separately.
+# medspacy requires spacy<3.8, so you may need a separate environment.
 
 [project.entry-points.pytest11]
 nlp = "pytest_nlp.plugin"

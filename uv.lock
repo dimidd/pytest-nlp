@@ -975,7 +975,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "sentence-transformers", specifier = ">=2.2" },
-    { name = "spacy", specifier = ">=3.5" },
+    { name = "spacy", specifier = ">=3.8" },
     { name = "stanza", specifier = ">=1.5" },
     { name = "torch" },
 ]

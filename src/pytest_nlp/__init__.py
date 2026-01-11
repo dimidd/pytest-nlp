@@ -4,6 +4,7 @@ This plugin provides assertions for:
 - Semantic similarity using sentence transformers
 - Token, phrase, and dependency matching using spaCy
 - Constituency parsing patterns using Stanza
+- Medical NER using MedSpaCy (optional)
 """
 
 from pytest_nlp.constituency import (
@@ -71,4 +72,34 @@ __all__ = [
     "NLPConfig",
     "get_config",
 ]
+
+# Medical NER (optional, requires medspacy)
+try:
+    from pytest_nlp.medical import (
+        MedicalEntity,
+        assert_entity_negated,
+        assert_entity_not_negated,
+        assert_has_drug,
+        assert_has_medical_entity,
+        assert_has_problem,
+        clear_medspacy_cache,
+        extract_medical_entities,
+        get_medspacy_pipeline,
+    )
+
+    __all__.extend([
+        # Medical NER
+        "MedicalEntity",
+        "extract_medical_entities",
+        "assert_has_medical_entity",
+        "assert_has_drug",
+        "assert_has_problem",
+        "assert_entity_negated",
+        "assert_entity_not_negated",
+        "get_medspacy_pipeline",
+        "clear_medspacy_cache",
+    ])
+except ImportError:
+    # medspacy not installed, medical functions not available
+    pass
 
