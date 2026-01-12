@@ -10,10 +10,13 @@ from typing import Literal
 
 import numpy as np
 
-from pytest_nlp.models import get_embedding_model, get_spacy_model
+from pytest_nlp.models import ANY, _AnySentinel, get_embedding_model, get_spacy_model, split_sentences
 
 
 SimilarityMetric = Literal["cosine", "euclidean", "dot"]
+
+# Type alias for sentence selection parameter
+SentenceSelector = list[int] | slice | _AnySentinel | None
 
 
 def _select_sentences(sentences: list[str], indices: list[int] | slice | None) -> list[str]:
@@ -101,7 +104,7 @@ def semantic_similarity(
 def semantic_contains(
     query: str,
     document: str,
-    sentences: list[int] | slice | None = None,
+    sentences: SentenceSelector = None,
     model_name: str = "all-MiniLM-L6-v2",
     metric: SimilarityMetric = "cosine",
     threshold: float = 0.7,
@@ -117,7 +120,11 @@ def semantic_contains(
 
     :param query: Query text to search for.
     :param document: Document text to search in.
-    :param sentences: Sentence indices or slice to filter (e.g., [-2, -1] for last 2).
+    :param sentences: Sentence selector - can be:
+        - None: use all sentences (spaCy segmentation)
+        - list[int]: specific sentence indices (e.g., [-2, -1] for last 2)
+        - slice: slice of sentences
+        - ANY: split on semicolons too, match if ANY sub-sentence matches
     :param model_name: Name of the sentence-transformers model.
     :param metric: Similarity metric ('cosine', 'euclidean', 'dot').
     :param threshold: Minimum similarity score to consider a match.
@@ -131,16 +138,22 @@ def semantic_contains(
     >>> isinstance(contains, bool) and isinstance(score, float)
     True
     """
-    # Segment document into sentences
-    nlp = get_spacy_model(spacy_model)
-    doc = nlp(document)
-    all_sentences = [sent.text.strip() for sent in doc.sents]
+    # Segment document into sentences based on selector type
+    if sentences is ANY:
+        # Granular splitting with semicolons
+        all_sentences = split_sentences(document, spacy_model=spacy_model, split_on_semicolon=True)
+        selected_sentences = all_sentences
+    else:
+        # Standard spaCy sentence segmentation
+        nlp = get_spacy_model(spacy_model)
+        doc = nlp(document)
+        all_sentences = [sent.text.strip() for sent in doc.sents]
 
-    if not all_sentences:
-        return False, 0.0
+        if not all_sentences:
+            return False, 0.0
 
-    # Select subset of sentences
-    selected_sentences = _select_sentences(all_sentences, sentences)
+        # Select subset of sentences
+        selected_sentences = _select_sentences(all_sentences, sentences)
 
     if not selected_sentences:
         return False, 0.0
@@ -171,7 +184,7 @@ def assert_semantic_contains(
     query: str,
     document: str,
     threshold: float = 0.7,
-    sentences: list[int] | slice | None = None,
+    sentences: SentenceSelector = None,
     model_name: str = "all-MiniLM-L6-v2",
     metric: SimilarityMetric = "cosine",
     device: str | None = None,
@@ -185,7 +198,11 @@ def assert_semantic_contains(
     :param query: Query text to search for.
     :param document: Document text to search in.
     :param threshold: Minimum similarity score to consider a match.
-    :param sentences: Sentence indices or slice to filter.
+    :param sentences: Sentence selector - can be:
+        - None: use all sentences (spaCy segmentation)
+        - list[int]: specific sentence indices
+        - slice: slice of sentences
+        - ANY: split on semicolons too, match if ANY sub-sentence matches
     :param model_name: Name of the sentence-transformers model.
     :param metric: Similarity metric ('cosine', 'euclidean', 'dot').
     :param device: Device to run the model on.

@@ -13,7 +13,11 @@ import spacy
 from spacy.matcher import DependencyMatcher, Matcher, PhraseMatcher
 from spacy.tokens import Doc, Span
 
-from pytest_nlp.models import get_spacy_model
+from pytest_nlp.models import ANY, _AnySentinel, get_spacy_model, split_sentences
+
+
+# Type alias for sentence selection parameter
+SentenceSelector = list[int] | slice | _AnySentinel | None
 
 
 @dataclass
@@ -55,13 +59,13 @@ class MatchResult:
 
 def _get_filtered_doc(
     text: str,
-    sentences: list[int] | slice | None,
+    sentences: SentenceSelector,
     nlp: spacy.Language,
 ) -> tuple[Doc, str]:
     """Process text and filter to selected sentences.
 
     :param text: Input text.
-    :param sentences: Sentence indices or slice to filter.
+    :param sentences: Sentence selector - indices, slice, ANY, or None.
     :param nlp: spaCy Language model.
     :returns: Tuple of (filtered Doc, filtered text).
     """
@@ -74,8 +78,11 @@ def _get_filtered_doc(
 
     if isinstance(sentences, slice):
         selected_sents = all_sents[sentences]
-    else:
+    elif isinstance(sentences, list):
         selected_sents = [all_sents[i] for i in sentences]
+    else:
+        # ANY or unknown - return full doc (ANY handling done at higher level)
+        return doc, text
 
     if not selected_sents:
         # Return empty doc
@@ -87,17 +94,34 @@ def _get_filtered_doc(
     return filtered_doc, filtered_text
 
 
+def _get_granular_sentences(
+    text: str,
+    spacy_model: str = "en_core_web_sm",
+) -> list[str]:
+    """Get granular sentences split on semicolons.
+
+    :param text: Input text.
+    :param spacy_model: spaCy model name for sentence segmentation.
+    :returns: List of sentence strings.
+    """
+    return split_sentences(text, spacy_model=spacy_model, split_on_semicolon=True)
+
+
 def match_tokens(
     doc: str,
     patterns: list[list[dict[str, Any]]],
-    sentences: list[int] | slice | None = None,
+    sentences: SentenceSelector = None,
     spacy_model: str = "en_core_web_sm",
 ) -> list[MatchResult]:
     """Match token patterns in a document using spaCy Matcher.
 
     :param doc: Document text to search in.
     :param patterns: List of token patterns (each pattern is a list of token specs).
-    :param sentences: Sentence indices or slice to filter.
+    :param sentences: Sentence selector - can be:
+        - None: use all sentences
+        - list[int]: specific sentence indices
+        - slice: slice of sentences
+        - ANY: split on semicolons too, match across all sub-sentences
     :param spacy_model: spaCy model to use.
     :returns: List of MatchResult objects for each match.
 
@@ -106,6 +130,15 @@ def match_tokens(
     True
     """
     nlp = get_spacy_model(spacy_model)
+
+    # Handle ANY sentinel - process each granular sentence
+    if sentences is ANY:
+        granular_sentences = _get_granular_sentences(doc, spacy_model)
+        all_results: list[MatchResult] = []
+        for sentence in granular_sentences:
+            all_results.extend(match_tokens(sentence, patterns, sentences=None, spacy_model=spacy_model))
+        return all_results
+
     spacy_doc, _ = _get_filtered_doc(doc, sentences, nlp)
 
     matcher = Matcher(nlp.vocab)
@@ -114,7 +147,7 @@ def match_tokens(
         matcher.add(f"PATTERN_{i}", [pattern])
 
     matches = matcher(spacy_doc)
-    results = []
+    results: list[MatchResult] = []
 
     for match_id, start, end in matches:
         span = spacy_doc[start:end]
@@ -127,7 +160,7 @@ def match_tokens(
 def match_phrases(
     doc: str,
     phrases: list[str],
-    sentences: list[int] | slice | None = None,
+    sentences: SentenceSelector = None,
     spacy_model: str = "en_core_web_sm",
     attr: str = "ORTH",
 ) -> list[MatchResult]:
@@ -135,7 +168,11 @@ def match_phrases(
 
     :param doc: Document text to search in.
     :param phrases: List of phrases to match.
-    :param sentences: Sentence indices or slice to filter.
+    :param sentences: Sentence selector - can be:
+        - None: use all sentences
+        - list[int]: specific sentence indices
+        - slice: slice of sentences
+        - ANY: split on semicolons too, match across all sub-sentences
     :param spacy_model: spaCy model to use.
     :param attr: Token attribute to match on (e.g., 'ORTH', 'LOWER', 'LEMMA').
     :returns: List of MatchResult objects for each match.
@@ -145,6 +182,15 @@ def match_phrases(
     True
     """
     nlp = get_spacy_model(spacy_model)
+
+    # Handle ANY sentinel - process each granular sentence
+    if sentences is ANY:
+        granular_sentences = _get_granular_sentences(doc, spacy_model)
+        all_results: list[MatchResult] = []
+        for sentence in granular_sentences:
+            all_results.extend(match_phrases(sentence, phrases, sentences=None, spacy_model=spacy_model, attr=attr))
+        return all_results
+
     spacy_doc, _ = _get_filtered_doc(doc, sentences, nlp)
 
     matcher = PhraseMatcher(nlp.vocab, attr=attr)
@@ -152,7 +198,7 @@ def match_phrases(
     matcher.add("PHRASES", phrase_patterns)
 
     matches = matcher(spacy_doc)
-    results = []
+    results: list[MatchResult] = []
 
     for _, start, end in matches:
         span = spacy_doc[start:end]
@@ -164,14 +210,18 @@ def match_phrases(
 def match_dependency(
     doc: str,
     patterns: list[dict[str, Any]],
-    sentences: list[int] | slice | None = None,
+    sentences: SentenceSelector = None,
     spacy_model: str = "en_core_web_sm",
 ) -> list[MatchResult]:
     """Match dependency patterns in a document using spaCy DependencyMatcher.
 
     :param doc: Document text to search in.
     :param patterns: Dependency pattern (list of node specifications).
-    :param sentences: Sentence indices or slice to filter.
+    :param sentences: Sentence selector - can be:
+        - None: use all sentences
+        - list[int]: specific sentence indices
+        - slice: slice of sentences
+        - ANY: split on semicolons too, match across all sub-sentences
     :param spacy_model: spaCy model to use.
     :returns: List of MatchResult objects for each match.
 
@@ -185,13 +235,22 @@ def match_dependency(
     True
     """
     nlp = get_spacy_model(spacy_model)
+
+    # Handle ANY sentinel - process each granular sentence
+    if sentences is ANY:
+        granular_sentences = _get_granular_sentences(doc, spacy_model)
+        all_results: list[MatchResult] = []
+        for sentence in granular_sentences:
+            all_results.extend(match_dependency(sentence, patterns, sentences=None, spacy_model=spacy_model))
+        return all_results
+
     spacy_doc, _ = _get_filtered_doc(doc, sentences, nlp)
 
     matcher = DependencyMatcher(nlp.vocab)
     matcher.add("DEPENDENCY_PATTERN", [patterns])
 
     matches = matcher(spacy_doc)
-    results = []
+    results: list[MatchResult] = []
 
     for _, token_ids in matches:
         if token_ids:
@@ -207,7 +266,7 @@ def match_dependency(
 def assert_matches_tokens(
     doc: str,
     patterns: list[list[dict[str, Any]]],
-    sentences: list[int] | slice | None = None,
+    sentences: SentenceSelector = None,
     spacy_model: str = "en_core_web_sm",
     min_matches: int = 1,
     msg: str | None = None,
@@ -216,7 +275,7 @@ def assert_matches_tokens(
 
     :param doc: Document text to search in.
     :param patterns: List of token patterns.
-    :param sentences: Sentence indices or slice to filter.
+    :param sentences: Sentence selector - indices, slice, ANY, or None.
     :param spacy_model: spaCy model to use.
     :param min_matches: Minimum number of matches required.
     :param msg: Custom error message.
@@ -239,7 +298,7 @@ def assert_matches_tokens(
 def assert_matches_phrases(
     doc: str,
     phrases: list[str],
-    sentences: list[int] | slice | None = None,
+    sentences: SentenceSelector = None,
     spacy_model: str = "en_core_web_sm",
     attr: str = "ORTH",
     min_matches: int = 1,
@@ -249,7 +308,7 @@ def assert_matches_phrases(
 
     :param doc: Document text to search in.
     :param phrases: List of phrases to match.
-    :param sentences: Sentence indices or slice to filter.
+    :param sentences: Sentence selector - indices, slice, ANY, or None.
     :param spacy_model: spaCy model to use.
     :param attr: Token attribute to match on.
     :param min_matches: Minimum number of matches required.
@@ -273,7 +332,7 @@ def assert_matches_phrases(
 def assert_matches_dependency(
     doc: str,
     patterns: list[dict[str, Any]],
-    sentences: list[int] | slice | None = None,
+    sentences: SentenceSelector = None,
     spacy_model: str = "en_core_web_sm",
     min_matches: int = 1,
     msg: str | None = None,
@@ -282,7 +341,7 @@ def assert_matches_dependency(
 
     :param doc: Document text to search in.
     :param patterns: Dependency pattern (list of node specifications).
-    :param sentences: Sentence indices or slice to filter.
+    :param sentences: Sentence selector - indices, slice, ANY, or None.
     :param spacy_model: spaCy model to use.
     :param min_matches: Minimum number of matches required.
     :param msg: Custom error message.

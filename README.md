@@ -9,6 +9,7 @@ A pytest plugin for evaluating free-text outputs using NLP techniques. Ideal for
 - **Phrase Matching**: Match exact phrases using spaCy's PhraseMatcher
 - **Dependency Matching**: Match dependency graph patterns using spaCy's DependencyMatcher
 - **Constituency Parsing**: Match phrase structure patterns using Stanza
+- **AMR Parsing**: Match Abstract Meaning Representation patterns using amrlib (optional)
 
 ## Installation
 
@@ -188,6 +189,96 @@ assert_matches_constituency(
 - **Variable capture**: `(NNP ?drug)` - captures text as variable
 - **Partial matching**: `(VP ...)` or `(VP (VBD was) ...)` - matches with additional children
 - **POS wildcards**: `(VB*)` - matches VB, VBD, VBN, VBZ, etc.
+
+## AMR (Abstract Meaning Representation)
+
+AMR provides deep semantic parsing. Install the optional dependency:
+
+```bash
+pip install pytest-nlp[amr]
+```
+
+### Parsing Sentences to AMR
+
+```python
+from pytest_nlp import parse_amr, assert_has_concept, assert_has_role
+
+# Parse a sentence to AMR
+graph = parse_amr("The boy wants to go.")
+print(graph)
+# (w / want-01
+#    :ARG0 (b / boy)
+#    :ARG1 (g / go-02
+#       :ARG0 b))
+
+# Check for specific concepts
+assert graph.has_concept("want-01")
+assert graph.has_concept("boy")
+```
+
+### Concept and Role Assertions
+
+```python
+# Assert concept exists
+assert_has_concept("The doctor discontinued the medication.", "discontinue-01")
+
+# Assert role exists
+assert_has_role(
+    "The boy wants to go.",
+    role=":ARG0",
+    source_concept="want-01",
+)
+```
+
+### Negation Detection
+
+```python
+from pytest_nlp import assert_is_negated, assert_not_negated
+
+# Check for negation
+assert_is_negated("The boy does not want to go.")
+assert_not_negated("The boy wants to go.")
+
+# Check specific concept negation
+assert_is_negated("The doctor did not discontinue the medication.", concept="discontinue-01")
+```
+
+### Pattern Matching
+
+```python
+from pytest_nlp import match_amr_pattern, assert_amr_pattern, find_concepts
+
+# Find all instances of a concept
+matches = find_concepts(graph, "want-*")  # Wildcard support
+
+# Match patterns with specific roles
+assert_amr_pattern(
+    "The boy wants to go.",
+    concept="want-01",
+    roles={":ARG0": "boy", ":ARG1": "*"},  # * matches anything
+)
+```
+
+### Semantic Similarity
+
+Compare semantic structure between sentences:
+
+```python
+from pytest_nlp import sentence_amr_similarity, assert_amr_similarity
+
+# Get Smatch F1 score
+score = sentence_amr_similarity(
+    "The boy wants to go.",
+    "The child wants to leave.",
+)
+
+# Assert sentences have similar AMR structure
+assert_amr_similarity(
+    "The boy wants to go.",
+    "The child wants to leave.",
+    threshold=0.5,
+)
+```
 
 ## Configuration
 

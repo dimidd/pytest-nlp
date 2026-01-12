@@ -3,6 +3,7 @@
 import pytest
 
 from pytest_nlp import (
+    ANY,
     assert_matches_dependency,
     assert_matches_phrases,
     assert_matches_tokens,
@@ -233,4 +234,99 @@ class TestAssertMatches:
                 patterns=[[{"POS": "ADJ"}]],
                 min_matches=10,
             )
+
+
+class TestANYSentinelMatchers:
+    """Tests for ANY sentinel with matcher functions."""
+
+    def test_match_tokens_with_any(self) -> None:
+        """Test token matching with ANY splits on semicolons."""
+        text = "First part here; second part contains target word."
+        results = match_tokens(
+            doc=text,
+            patterns=[[{"LOWER": "target"}]],
+            sentences=ANY,
+        )
+        assert len(results) == 1
+        assert results[0].text == "target"
+
+    def test_match_phrases_with_any(self) -> None:
+        """Test phrase matching with ANY splits on semicolons."""
+        text = "Patient stable; medication reduced to 5mg daily."
+        results = match_phrases(
+            doc=text,
+            phrases=["5mg daily"],
+            sentences=ANY,
+        )
+        assert len(results) == 1
+
+    def test_match_phrases_any_case_insensitive(self) -> None:
+        """Test case-insensitive phrase matching with ANY."""
+        text = "First clause; IMPORTANT PHRASE here."
+        results = match_phrases(
+            doc=text,
+            phrases=["important phrase"],
+            sentences=ANY,
+            attr="LOWER",
+        )
+        assert len(results) == 1
+
+    def test_match_dependency_with_any(self) -> None:
+        """Test dependency matching with ANY splits on semicolons."""
+        text = "Patient rested; doctor prescribed medication."
+        patterns = [
+            {"RIGHT_ID": "verb", "RIGHT_ATTRS": {"LEMMA": "prescribe"}},
+        ]
+        results = match_dependency(
+            doc=text,
+            patterns=patterns,
+            sentences=ANY,
+        )
+        assert len(results) >= 1
+
+    def test_assert_matches_tokens_with_any(self) -> None:
+        """Test token assertion with ANY sentinel."""
+        text = "Initial dose; taper initiated later."
+        # Should not raise
+        assert_matches_tokens(
+            doc=text,
+            patterns=[[{"LEMMA": "initiate"}]],
+            sentences=ANY,
+        )
+
+    def test_assert_matches_phrases_with_any(self) -> None:
+        """Test phrase assertion with ANY sentinel."""
+        text = "Stable vitals; blood pressure normal."
+        # Should not raise
+        assert_matches_phrases(
+            doc=text,
+            phrases=["blood pressure"],
+            sentences=ANY,
+        )
+
+    def test_any_aggregates_results(self) -> None:
+        """Test that ANY aggregates results from all sub-sentences."""
+        text = "Contains word here; also word there; word again."
+        results = match_tokens(
+            doc=text,
+            patterns=[[{"LOWER": "word"}]],
+            sentences=ANY,
+        )
+        # Should find "word" in all three sub-sentences
+        assert len(results) == 3
+
+    def test_complex_medical_text_with_any(self) -> None:
+        """Test ANY with complex medical text containing semicolons."""
+        text = (
+            "Prescribed 20mg daily by Dr. Johnson on 05/01/2024 for an RA flare; "
+            "on 05/15/2024, a taper was initiated to 10mg daily for one week, then 5mg daily."
+        )
+        # Match "taper" in the second sub-sentence
+        results = match_tokens(
+            doc=text,
+            patterns=[[{"LOWER": "taper"}]],
+            sentences=ANY,
+        )
+        assert len(results) == 1
+        assert results[0].text == "taper"
 

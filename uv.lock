@@ -7,6 +7,24 @@ resolution-markers = [
 ]
 
 [[package]]
+name = "amrlib"
+version = "0.8.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "penman" },
+    { name = "smatch" },
+    { name = "spacy" },
+    { name = "torch" },
+    { name = "tqdm" },
+    { name = "transformers" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/80/4b/c8b3e63407e7afdf5d2a80d5f648c5df8f9a29d3ab11aa4307e100529282/amrlib-0.8.0.tar.gz", hash = "sha256:1ba8a630744d10fe59cce3db8ea6cdf9575bd10ab14942192b563bef62178f57", size = 329213, upload-time = "2024-01-22T01:37:19.914Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c4/bf/a6455be76e5a580190ace72fe3d15aa4acd0789ff0f399a45cbc68a5ddad/amrlib-0.8.0-py3-none-any.whl", hash = "sha256:b676ba0e2d307a6ed698518c625cac6d7e21d525129453315b0eb3769b1619c6", size = 353304, upload-time = "2024-01-22T01:37:17.746Z" },
+]
+
+[[package]]
 name = "annotated-types"
 version = "0.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -737,6 +755,15 @@ wheels = [
 ]
 
 [[package]]
+name = "penman"
+version = "1.3.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f4/0b/7e3738226fb73afc7aa75cc314968bc78d3e3e8dc343296f54c47a2470a9/penman-1.3.1.tar.gz", hash = "sha256:584a95947544c197bcee0e8c837f89e6f6fb7998327c0274a4d2beb473d8e135", size = 101331, upload-time = "2024-08-07T05:59:13.289Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/52/0e/d1bf14d77b929a0d054561e6d78b9932a3c1bb76fac665fbfbcf410afec9/penman-1.3.1-py3-none-any.whl", hash = "sha256:1444005a178e7ea2bcee2cc51c5f6aae6f7b1bb916a2764c7f1b5d0e304fcdca", size = 43413, upload-time = "2024-08-07T05:59:11.981Z" },
+]
+
+[[package]]
 name = "pluggy"
 version = "1.6.0"
 source = { registry = "https://pypi.org/simple" }
@@ -962,6 +989,10 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+amr = [
+    { name = "amrlib" },
+    { name = "penman" },
+]
 dev = [
     { name = "en-core-web-sm" },
     { name = "pytest" },
@@ -970,7 +1001,9 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "amrlib", marker = "extra == 'amr'", specifier = ">=0.8" },
     { name = "en-core-web-sm", marker = "extra == 'dev'", url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl" },
+    { name = "penman", marker = "extra == 'amr'", specifier = ">=1.2" },
     { name = "pytest", specifier = ">=7.0" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "ruff", marker = "extra == 'dev'" },
@@ -979,7 +1012,7 @@ requires-dist = [
     { name = "stanza", specifier = ">=1.5" },
     { name = "torch" },
 ]
-provides-extras = ["dev"]
+provides-extras = ["amr", "dev"]
 
 [[package]]
 name = "pyyaml"
@@ -1350,6 +1383,12 @@ sdist = { url = "https://files.pythonhosted.org/packages/67/9a/0a7acb748b86e2922
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ad/95/bc978be7ea0babf2fb48a414b6afaad414c6a9e8b1eafc5b8a53c030381a/smart_open-7.5.0-py3-none-any.whl", hash = "sha256:87e695c5148bbb988f15cec00971602765874163be85acb1c9fb8abc012e6599", size = 63940, upload-time = "2025-11-08T21:38:39.024Z" },
 ]
+
+[[package]]
+name = "smatch"
+version = "1.0.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/10/d3/8f80dc5a152173161a0f3b9d5e2b1b1ff65d26ca808494b9ed3934149e5e/smatch-1.0.4.tar.gz", hash = "sha256:33f4401dd0c23517fb64872bb4981e081a8a58a7bb1f34a4bf04243de30e19e9", size = 26561, upload-time = "2020-05-31T05:02:52.941Z" }
 
 [[package]]
 name = "spacy"

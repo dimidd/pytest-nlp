@@ -32,6 +32,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+amr = [
+    "amrlib>=0.8",
+    "penman>=1.2",
+]
 dev = [
     "pytest",
     "ruff",
@@ -63,4 +67,7 @@ nlp_spacy_model = "en_core_web_sm"
 nlp_stanza_lang = "en"
 nlp_similarity_threshold = "0.7"
 nlp_similarity_metric = "cosine"
+filterwarnings = [
+    "ignore:.*The component 'matcher' does not have any patterns defined.*:UserWarning",
+]
 
