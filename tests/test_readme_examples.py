@@ -36,7 +36,7 @@ def test_quick_start() -> None:
     doc = """The new smartphone features a 6.5-inch display.
     It has an excellent camera system. Battery life is outstanding."""
 
-    # Semantic matching: check if concept is present
+    # Semantic matching: check a sentiment of an aspect of the document
     assert_semantic_contains(
         query="great battery performance",
         document=doc,

@@ -1,0 +1,38 @@
+#!/bin/bash
+# Pre-commit hook: regenerate READMEs if test examples or templates change
+
+# Files that trigger regeneration
+WATCH_FILES=(
+    "tests/test_readme_examples.py"
+    "tests/test_medical_readme_examples.py"
+    "README.template.md"
+    "MEDICAL_README.template.md"
+)
+
+# Check if any watched files are staged
+REGENERATE=false
+for file in "${WATCH_FILES[@]}"; do
+    if git diff --cached --name-only | grep -q "^${file}$"; then
+        REGENERATE=true
+        break
+    fi
+done
+
+if [ "$REGENERATE" = true ]; then
+    echo "📝 Readme test files or templates changed, regenerating docs..."
+    
+    # Check if npx is available
+    if ! command -v npx &> /dev/null; then
+        echo "⚠️  npx not found, skipping doc generation"
+        exit 0
+    fi
+    
+    # Run the generation script
+    ./scripts/generate-docs.sh
+    
+    # Stage the generated files
+    git add README.md MEDICAL_README.md
+    
+    echo "✅ READMEs regenerated and staged"
+fi
+
