@@ -1,0 +1,9 @@
+name: Check docs are up-to-date
+on: [pull_request]
+jobs:
+  check-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/generate-docs.sh
+      - run: git diff --exit-code README.md MEDICAL_README.md

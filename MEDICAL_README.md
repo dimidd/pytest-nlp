@@ -1,3 +1,8 @@
+<!-- 
+  MEDICAL README TEMPLATE - Do not edit MEDICAL_README.md directly!
+  Edit this file and run: npx markdown-autodocs -c code-block -o ./MEDICAL_README.md
+-->
+
 # Medical NLP with pytest-nlp
 
 This guide provides medical and clinical examples for all pytest-nlp features, plus documentation for the MedSpaCy-based medical NER module.
