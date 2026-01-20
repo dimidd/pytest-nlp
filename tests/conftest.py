@@ -19,3 +19,14 @@ def simple_sentence() -> str:
     """Simple sentence for basic testing."""
     return "The quick brown fox jumps over the lazy dog."
 
+
+@pytest.fixture
+def dosage_document() -> str:
+    """Medical document with dosage information."""
+    return (
+        "Patient was admitted with severe pain. "
+        "Prescribed Ibuprofen 200mg twice daily. "
+        "After one week, dosage increased to 400mg. "
+        "Patient showed improvement and was discharged."
+    )
+

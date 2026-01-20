@@ -10,27 +10,43 @@ from typing import Literal
 
 import numpy as np
 
-from pytest_nlp.models import ANY, _AnySentinel, get_embedding_model, get_spacy_model, split_sentences
+from pytest_nlp.models import (
+    ANY,
+    SentenceMatch,
+    _AnySentinel,
+    get_embedding_model,
+    get_spacy_model,
+    split_sentences,
+)
 
 
 SimilarityMetric = Literal["cosine", "euclidean", "dot"]
 
 # Type alias for sentence selection parameter
-SentenceSelector = list[int] | slice | _AnySentinel | None
+SentenceSelector = list[int] | slice | _AnySentinel | SentenceMatch | None
 
 
-def _select_sentences(sentences: list[str], indices: list[int] | slice | None) -> list[str]:
-    """Select a subset of sentences based on indices or slice.
+def _select_sentences(
+    sentences: list[str],
+    selector: list[int] | slice | SentenceMatch | None,
+) -> list[str]:
+    """Select a subset of sentences based on indices, slice, or pattern match.
 
     :param sentences: List of sentence strings.
-    :param indices: List of indices, a slice, or None for all sentences.
+    :param selector: Selector for sentences:
+        - None: all sentences
+        - list[int]: specific sentence indices
+        - slice: slice of sentences
+        - SentenceMatch: pattern-based selection
     :returns: Selected subset of sentences.
     """
-    if indices is None:
+    if selector is None:
         return sentences
-    if isinstance(indices, slice):
-        return sentences[indices]
-    return [sentences[i] for i in indices]
+    if isinstance(selector, slice):
+        return sentences[selector]
+    if isinstance(selector, SentenceMatch):
+        return selector.select(sentences)
+    return [sentences[i] for i in selector]
 
 
 def _compute_similarity(
@@ -125,6 +141,7 @@ def semantic_contains(
         - list[int]: specific sentence indices (e.g., [-2, -1] for last 2)
         - slice: slice of sentences
         - ANY: split on semicolons too, match if ANY sub-sentence matches
+        - SentenceMatch: pattern-based selection (first/last/all matching)
     :param model_name: Name of the sentence-transformers model.
     :param metric: Similarity metric ('cosine', 'euclidean', 'dot').
     :param threshold: Minimum similarity score to consider a match.
@@ -203,6 +220,7 @@ def assert_semantic_contains(
         - list[int]: specific sentence indices
         - slice: slice of sentences
         - ANY: split on semicolons too, match if ANY sub-sentence matches
+        - SentenceMatch: pattern-based selection (first/last/all matching)
     :param model_name: Name of the sentence-transformers model.
     :param metric: Similarity metric ('cosine', 'euclidean', 'dot').
     :param device: Device to run the model on.

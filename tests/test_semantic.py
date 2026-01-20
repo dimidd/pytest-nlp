@@ -1,9 +1,12 @@
 """Tests for semantic similarity module."""
 
+import re
+
 import pytest
 
 from pytest_nlp import (
     ANY,
+    SentenceMatch,
     assert_semantic_contains,
     assert_semantic_similarity,
     semantic_contains,
@@ -341,4 +344,174 @@ class TestANYSentinel:
                 threshold=0.9,
             )
         assert "not semantically contained" in str(exc_info.value)
+
+
+class TestSentenceMatch:
+    """Tests for SentenceMatch pattern-based sentence selection."""
+
+    def test_matches_string_case_insensitive(self) -> None:
+        """Test that string matching is case insensitive."""
+        matcher = SentenceMatch("medication")
+        assert matcher.matches("Patient received MEDICATION today.")
+        assert matcher.matches("medication was prescribed")
+        assert not matcher.matches("Patient was admitted.")
+
+    def test_matches_regex(self) -> None:
+        """Test matching with compiled regex pattern."""
+        matcher = SentenceMatch(re.compile(r"\d+mg"))
+        assert matcher.matches("Prescribed 20mg daily.")
+        assert matcher.matches("Later reduced to 5mg.")
+        assert not matcher.matches("No dosage specified.")
+
+    def test_select_first(self) -> None:
+        """Test selecting first matching sentence."""
+        sentences = [
+            "Patient was admitted.",
+            "Prescribed ibuprofen 200mg.",
+            "Later increased to 400mg.",
+            "Patient discharged.",
+        ]
+        matcher = SentenceMatch(re.compile(r"\d+mg"), mode="first")
+        result = matcher.select(sentences)
+        assert result == ["Prescribed ibuprofen 200mg."]
+
+    def test_select_last(self) -> None:
+        """Test selecting last matching sentence."""
+        sentences = [
+            "Patient was admitted.",
+            "Prescribed ibuprofen 200mg.",
+            "Later increased to 400mg.",
+            "Patient discharged.",
+        ]
+        matcher = SentenceMatch(re.compile(r"\d+mg"), mode="last")
+        result = matcher.select(sentences)
+        assert result == ["Later increased to 400mg."]
+
+    def test_select_all(self) -> None:
+        """Test selecting all matching sentences."""
+        sentences = [
+            "Patient was admitted.",
+            "Prescribed ibuprofen 200mg.",
+            "Later increased to 400mg.",
+            "Patient discharged.",
+        ]
+        matcher = SentenceMatch(re.compile(r"\d+mg"), mode="all")
+        result = matcher.select(sentences)
+        assert result == ["Prescribed ibuprofen 200mg.", "Later increased to 400mg."]
+
+    def test_select_no_match(self) -> None:
+        """Test that empty list is returned when nothing matches."""
+        sentences = ["Patient was admitted.", "Patient discharged."]
+        matcher = SentenceMatch("medication", mode="all")
+        result = matcher.select(sentences)
+        assert result == []
+
+    def test_semantic_contains_with_sentence_match_first(
+        self, drug_document: str
+    ) -> None:
+        """Test semantic_contains with SentenceMatch selecting first match."""
+        # Find first sentence containing "Ibuprofen"
+        is_contained, score = semantic_contains(
+            query="drug prescription",
+            document=drug_document,
+            sentences=SentenceMatch("ibuprofen", mode="first"),
+            threshold=0.3,
+        )
+        assert is_contained
+
+    def test_semantic_contains_with_sentence_match_last(
+        self, drug_document: str
+    ) -> None:
+        """Test semantic_contains with SentenceMatch selecting last match."""
+        # Find last sentence mentioning Ibuprofen (the discontinuation sentence)
+        is_contained, score = semantic_contains(
+            query="Ibuprofen discontinued",
+            document=drug_document,
+            sentences=SentenceMatch("ibuprofen", mode="last"),
+            threshold=0.6,
+        )
+        assert is_contained
+
+    def test_semantic_contains_with_sentence_match_all(
+        self, drug_document: str
+    ) -> None:
+        """Test semantic_contains with SentenceMatch selecting all matches."""
+        is_contained, score = semantic_contains(
+            query="Ibuprofen treatment",
+            document=drug_document,
+            sentences=SentenceMatch("ibuprofen", mode="all"),
+            threshold=0.4,
+        )
+        assert is_contained
+
+    def test_assert_semantic_contains_with_sentence_match(
+        self, drug_document: str
+    ) -> None:
+        """Test assert_semantic_contains with SentenceMatch."""
+        # Should not raise - matching "Ibuprofen was discontinued" sentence
+        assert_semantic_contains(
+            query="Ibuprofen was discontinued",
+            document=drug_document,
+            sentences=SentenceMatch("discontinue", mode="first"),
+            threshold=0.7,
+        )
+
+    def test_sentence_match_no_match_returns_false(self, drug_document: str) -> None:
+        """Test that no matching sentences returns (False, 0.0)."""
+        is_contained, score = semantic_contains(
+            query="surgery performed",
+            document=drug_document,
+            sentences=SentenceMatch("nonexistent_word_xyz"),
+            threshold=0.5,
+        )
+        assert not is_contained
+        assert score == 0.0
+
+    def test_sentence_match_regex_dosage_first(self, dosage_document: str) -> None:
+        """Test SentenceMatch with regex pattern for first dosage sentence."""
+        # Find first sentence containing a dosage (e.g., "200mg", "400mg")
+        is_contained, score = semantic_contains(
+            query="medication prescribed",
+            document=dosage_document,
+            sentences=SentenceMatch(re.compile(r"\d+mg"), mode="first"),
+            threshold=0.3,
+        )
+        assert is_contained
+
+    def test_sentence_match_regex_dosage_last(self, dosage_document: str) -> None:
+        """Test SentenceMatch with regex pattern for last dosage sentence."""
+        # Find last sentence containing a dosage
+        is_contained, score = semantic_contains(
+            query="dosage increased",
+            document=dosage_document,
+            sentences=SentenceMatch(re.compile(r"\d+mg"), mode="last"),
+            threshold=0.5,
+        )
+        assert is_contained
+
+    def test_sentence_match_regex_dosage_all(self, dosage_document: str) -> None:
+        """Test SentenceMatch with regex pattern for all dosage sentences."""
+        # Find all sentences containing dosages
+        is_contained, score = semantic_contains(
+            query="medication dosage",
+            document=dosage_document,
+            sentences=SentenceMatch(re.compile(r"\d+mg"), mode="all"),
+            threshold=0.3,
+        )
+        assert is_contained
+
+    def test_sentence_match_regex_select_returns_correct_sentences(
+        self, dosage_document: str
+    ) -> None:
+        """Test that regex SentenceMatch selects the correct sentences."""
+        from pytest_nlp import split_sentences
+
+        sentences = split_sentences(dosage_document, split_on_semicolon=False)
+        matcher = SentenceMatch(re.compile(r"\d+mg"), mode="all")
+        selected = matcher.select(sentences)
+
+        # Should select the two sentences with dosages
+        assert len(selected) == 2
+        assert "200mg" in selected[0]
+        assert "400mg" in selected[1]
 

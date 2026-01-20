@@ -98,6 +98,49 @@ assert_semantic_contains(query, doc, sentences=[0, 1])
 assert_semantic_contains(query, doc, sentences=slice(-3, None))
 ```
 
+### Pattern-Based Sentence Selection
+
+Use `SentenceMatch` to select sentences containing a word or matching a regex:
+
+```python
+import re
+from pytest_nlp import SentenceMatch, assert_semantic_contains
+
+doc = """Patient was prescribed Ibuprofen 200mg on 01/12/2023.
+Patient reported mild side effects.
+Dosage increased to 400mg on 02/15/2023.
+Ibuprofen was discontinued on 12/30/2023."""
+
+# Select first sentence containing "ibuprofen" (case-insensitive)
+assert_semantic_contains(
+    query="medication prescribed",
+    document=doc,
+    sentences=SentenceMatch("ibuprofen", mode="first"),
+    threshold=0.5,
+)
+
+# Select last sentence containing "ibuprofen"
+assert_semantic_contains(
+    query="medication stopped",
+    document=doc,
+    sentences=SentenceMatch("ibuprofen", mode="last"),
+    threshold=0.5,
+)
+
+# Select all sentences matching a regex pattern (e.g., containing dosage)
+assert_semantic_contains(
+    query="dosage information",
+    document=doc,
+    sentences=SentenceMatch(re.compile(r"\d+mg"), mode="all"),
+    threshold=0.4,
+)
+```
+
+The `mode` parameter controls which matching sentences to use:
+- `"first"`: Only the first matching sentence (default)
+- `"last"`: Only the last matching sentence
+- `"all"`: All matching sentences
+
 ## SpaCy Matchers
 
 ### Token Matching

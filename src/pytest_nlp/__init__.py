@@ -32,6 +32,7 @@ from pytest_nlp.models import (
     DEFAULT_SPACY_MODEL,
     DEFAULT_STANZA_LANG,
     DEFAULT_STANZA_PROCESSORS,
+    SentenceMatch,
     clear_model_cache,
     get_embedding_model,
     get_spacy_model,
@@ -53,6 +54,7 @@ __all__ = [
     "__version__",
     # Sentence utilities
     "ANY",
+    "SentenceMatch",
     "split_sentences",
     # Semantic similarity
     "semantic_similarity",

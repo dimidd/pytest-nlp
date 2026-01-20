@@ -11,8 +11,9 @@ This module handles loading and caching of NLP models used by pytest-nlp:
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from functools import lru_cache
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Final, Literal
 
 
 # =============================================================================
@@ -75,6 +76,81 @@ Example::
     >>> text = "Patient prescribed 20mg; later reduced to 10mg."
     >>> assert_semantic_contains("dosage reduced", text, sentences=ANY)
 """
+
+
+MatchMode = Literal["first", "last", "all"]
+
+
+@dataclass(frozen=True, slots=True)
+class SentenceMatch:
+    """Selector for sentences containing a word or matching a regex pattern.
+
+    This allows selecting sentences from a document based on whether they
+    contain a specific pattern, with control over which matching sentences
+    to use (first, last, or all).
+
+    :param pattern: A string (for substring match) or compiled regex pattern.
+    :param mode: Which matching sentences to select:
+        - "first": Only the first matching sentence
+        - "last": Only the last matching sentence
+        - "all": All matching sentences
+
+    Example::
+
+        >>> from pytest_nlp import SentenceMatch
+        >>> # Select first sentence containing "medication"
+        >>> selector = SentenceMatch("medication", mode="first")
+        >>> # Select all sentences matching a regex
+        >>> import re
+        >>> selector = SentenceMatch(re.compile(r"\\d+mg"), mode="all")
+    """
+
+    pattern: str | re.Pattern[str]
+    mode: MatchMode = "first"
+
+    def matches(self, sentence: str) -> bool:
+        """Check if a sentence matches the pattern.
+
+        :param sentence: Sentence string to check.
+        :returns: True if the sentence matches the pattern.
+
+        >>> SentenceMatch("hello").matches("Hello world")
+        True
+        >>> SentenceMatch("xyz").matches("Hello world")
+        False
+        >>> import re
+        >>> SentenceMatch(re.compile(r"\\d+")).matches("Patient took 20mg")
+        True
+        """
+        if isinstance(self.pattern, str):
+            return self.pattern.lower() in sentence.lower()
+        return self.pattern.search(sentence) is not None
+
+    def select(self, sentences: list[str]) -> list[str]:
+        """Select sentences that match the pattern according to mode.
+
+        :param sentences: List of sentence strings.
+        :returns: List of selected sentences based on pattern and mode.
+
+        >>> sentences = ["First med.", "No match.", "Second med.", "Third med."]
+        >>> SentenceMatch("med", mode="first").select(sentences)
+        ['First med.']
+        >>> SentenceMatch("med", mode="last").select(sentences)
+        ['Third med.']
+        >>> SentenceMatch("med", mode="all").select(sentences)
+        ['First med.', 'Second med.', 'Third med.']
+        """
+        matching = [s for s in sentences if self.matches(s)]
+
+        if not matching:
+            return []
+
+        if self.mode == "first":
+            return [matching[0]]
+        elif self.mode == "last":
+            return [matching[-1]]
+        else:  # mode == "all"
+            return matching
 
 
 # Pattern for splitting sentences on semicolons while preserving whitespace handling
